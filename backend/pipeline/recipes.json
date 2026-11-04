@@ -1,0 +1,52 @@
+[
+  {
+    "name": "before_after",
+    "target_seconds": 15,
+    "hook": true,
+    "sections": [
+      {"type": "before", "seconds": 2.5, "angles": 1},
+      {"type": "after", "seconds": 4, "angles": 3}
+    ]
+  },
+  {
+    "name": "quick_hit",
+    "target_seconds": 15,
+    "hook": false,
+    "sections": [
+      {"type": "before", "seconds": 2, "angles": 1},
+      {"type": "progress", "seconds": 9, "style": "montage", "clip_seconds": 1.0},
+      {"type": "after", "seconds": 4, "angles": 2}
+    ]
+  },
+  {
+    "name": "timelapse",
+    "target_seconds": 15,
+    "hook": true,
+    "sections": [
+      {"type": "before", "seconds": 2, "angles": 1},
+      {"type": "progress", "seconds": 8.5, "style": "timelapse", "speed": 4},
+      {"type": "after", "seconds": 4, "angles": 2}
+    ]
+  },
+  {
+    "name": "full_story",
+    "target_seconds": 30,
+    "hook": false,
+    "sections": [
+      {"type": "before", "seconds": 2.5, "angles": 1},
+      {"type": "progress", "seconds": 23.5, "style": "montage", "clip_seconds": 1.5},
+      {"type": "after", "seconds": 4, "angles": 3}
+    ]
+  },
+  {
+    "name": "slow_build",
+    "target_seconds": 30,
+    "hook": true,
+    "sections": [
+      {"type": "before", "seconds": 2.5, "angles": 1},
+      {"type": "progress", "seconds": 10, "style": "montage", "clip_seconds": 1.25},
+      {"type": "progress", "seconds": 13, "style": "timelapse", "speed": 4},
+      {"type": "after", "seconds": 4, "angles": 3}
+    ]
+  }
+]
