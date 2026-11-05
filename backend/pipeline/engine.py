@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from frames import brightness, extract_frames, sharpness
+from pipeline.frames import brightness, extract_frames, sharpness
 
 RECIPES = Path(__file__).parent / "recipes.json"
 MIN_SCORE = 0.25       # windows scoring below this aren't good enough to use
@@ -13,9 +13,9 @@ MIN_VIDEO_SECONDS = 4  # anything shorter isn't worth making
 ZONES = {"before": (0.0, 0.25), "progress": (0.25, 0.75), "after": (0.75, 1.0)}
 
 
-def score_frames(video: str) -> list[float]:
+def score_frames(video: str, out_root: Path) -> list[float]:
     """One quality score (0 to 1) for every second of video."""
-    out_dir = Path("outputs/frames")
+    out_dir = out_root / "frames"
     shutil.rmtree(out_dir, ignore_errors=True)
     frames = extract_frames(video, str(out_dir))
     sharp = [sharpness(f) for f in frames]
@@ -98,7 +98,7 @@ def render_clip(video, start, source_len, speed, out_path):
     )
 
 
-def build_reel(video, recipe, scores, index):
+def build_reel(video, recipe, scores, index, out_root: Path):
     used, shots, after_first = [], [], None
 
     for section in recipe["sections"]:
@@ -118,7 +118,7 @@ def build_reel(video, recipe, scores, index):
         print(f"  Skipped: only {total:.1f}s of good footage")
         return None
 
-    clip_dir = Path("outputs/reels") / recipe["name"]
+    clip_dir = out_root / "reels" / recipe["name"]
     shutil.rmtree(clip_dir, ignore_errors=True)
     clip_dir.mkdir(parents=True)
 
@@ -130,7 +130,7 @@ def build_reel(video, recipe, scores, index):
 
     list_file = clip_dir / "clips.txt"
     list_file.write_text("".join(f"file '{p.resolve()}'\n" for p in paths))
-    final = Path("outputs/reels") / f"{index + 1}_{recipe['name']}.mp4"
+    final = out_root / "reels" / f"{index + 1}_{recipe['name']}.mp4"
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
          "-i", str(list_file), "-c", "copy", str(final)],
@@ -140,14 +140,19 @@ def build_reel(video, recipe, scores, index):
     return final
 
 
-if __name__ == "__main__":
-    video = sys.argv[1]
+def run_engine(video: str, out_root: Path) -> list[Path]:
+    """Score the video once, then build every recipe. Returns the finished reels."""
     recipes = json.loads(RECIPES.read_text())
-
-    print("Scoring frames...")
-    scores = score_frames(video)
-    print(f"Scored {len(scores)} seconds of footage")
-
+    scores = score_frames(video, out_root)
+    reels = []
     for i, recipe in enumerate(recipes):
         print(f"Building {recipe['name']}...")
-        build_reel(video, recipe, scores, i)
+        reel = build_reel(video, recipe, scores, i, out_root)
+        if reel:
+            reels.append(reel)
+    return reels
+
+
+if __name__ == "__main__":
+    reels = run_engine(sys.argv[1], Path("outputs"))
+    print(f"Made {len(reels)} reels")
