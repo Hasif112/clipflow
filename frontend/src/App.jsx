@@ -10,6 +10,8 @@ const LABELS = {
   slow_build: 'Slow Build',
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 function reelLabel(url) {
   const name = url.split('/').pop().replace('.mp4', '').replace(/^\d+_/, '')
   return LABELS[name] || name
@@ -19,8 +21,12 @@ export default function App() {
   const [file, setFile] = useState(null)
   const [status, setStatus] = useState('idle')
   const [reels, setReels] = useState([])
+  const [progress, setProgress] = useState(0)
+  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [dragging, setDragging] = useState(false)
+
+  const working = status === 'working'
 
   function pickFile(f) {
     if (!f) return
@@ -28,20 +34,43 @@ export default function App() {
     setReels([])
     setStatus('idle')
     setError('')
+    setProgress(0)
   }
 
   async function generate() {
     if (!file) return
-    setStatus('uploading')
+    setStatus('working')
     setError('')
+    setReels([])
+    setProgress(0)
+    setMessage('Uploading video...')
+
     const form = new FormData()
     form.append('video', file)
+
     try {
       const res = await fetch(`${API}/projects`, { method: 'POST', body: form })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Something went wrong')
-      setReels(data.reels)
-      setStatus('done')
+      if (!res.ok) throw new Error(data.detail || 'Upload failed')
+
+      // Check in with the backend every second until the job finishes
+      while (true) {
+        await sleep(1000)
+        const poll = await fetch(`${API}/projects/${data.project_id}`)
+        const job = await poll.json()
+        if (!poll.ok) throw new Error(job.detail || 'Lost track of the job')
+
+        setProgress(job.progress)
+        setMessage(job.message)
+        setReels(job.reels)
+
+        if (job.status === 'error') throw new Error(job.message)
+        if (job.status === 'done') {
+          if (job.reels.length === 0) setError("Couldn't find enough good footage to make a reel.")
+          setStatus('done')
+          break
+        }
+      }
     } catch (err) {
       setError(err.message)
       setStatus('error')
@@ -73,15 +102,24 @@ export default function App() {
 
         <button
           onClick={generate}
-          disabled={!file || status === 'uploading'}
+          disabled={!file || working}
           className="mt-6 w-full rounded-xl bg-violet-600 py-3 font-semibold transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {status === 'uploading' ? 'Making your reels...' : 'Generate 5 reels'}
+          {working ? 'Working...' : 'Generate 5 reels'}
         </button>
 
-        {status === 'uploading' && (
-          <div className="mt-4 h-1 w-full overflow-hidden rounded bg-neutral-800">
-            <div className="h-full w-1/3 animate-pulse rounded bg-violet-500" />
+        {working && (
+          <div className="mt-6">
+            <div className="mb-2 flex justify-between text-sm text-neutral-400">
+              <span>{message}</span>
+              <span>{Math.round(progress * 100)}%</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-800">
+              <div
+                className="h-full rounded-full bg-violet-500 transition-all duration-500"
+                style={{ width: `${Math.round(progress * 100)}%` }}
+              />
+            </div>
           </div>
         )}
 

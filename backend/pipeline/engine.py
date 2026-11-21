@@ -140,16 +140,27 @@ def build_reel(video, recipe, scores, index, out_root: Path):
     return final
 
 
-def run_engine(video: str, out_root: Path) -> list[Path]:
-    """Score the video once, then build every recipe. Returns the finished reels."""
+def run_engine(video: str, out_root: Path, on_progress=None) -> list[Path]:
+    """Score the video once, then build every recipe. Reports progress as it goes."""
+    def report(message, fraction, reel=None):
+        print(message)
+        if on_progress:
+            on_progress(message, fraction, reel)
+
     recipes = json.loads(RECIPES.read_text())
+    report("Scoring frames...", 0.05)
     scores = score_frames(video, out_root)
+
     reels = []
+    total = len(recipes)
     for i, recipe in enumerate(recipes):
-        print(f"Building {recipe['name']}...")
+        report(f"Building reel {i + 1} of {total}...", 0.2 + 0.8 * i / total)
         reel = build_reel(video, recipe, scores, i, out_root)
         if reel:
             reels.append(reel)
+            report(f"Finished reel {i + 1} of {total}", 0.2 + 0.8 * (i + 1) / total, reel)
+
+    report("Done", 1.0)
     return reels
 
 
