@@ -10,9 +10,10 @@ def make_detector():
     return cv2.FaceDetectorYN.create(str(MODEL), "", (320, 320), score_threshold=0.6)
 
 
-def find_face(detector, image_path: Path):
-    """Return the biggest face in the frame as (x, y, w, h, confidence), or None."""
-    img = cv2.imread(str(image_path))
+def find_face(detector, image):
+    """Return the biggest face in the frame as (x, y, w, h, confidence), or None.
+    Accepts a file path or an image already loaded with OpenCV."""
+    img = image if hasattr(image, "shape") else cv2.imread(str(image))
     if img is None:
         return None
     h, w = img.shape[:2]
